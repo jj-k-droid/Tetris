@@ -19,7 +19,7 @@
 
 (define rotate-shape
   (lambda (key)
-    (let* ([i (deref shape-index)]
+    (let* ([i (+ 4 (deref shape-index))]
            [shape (deref current-shape)]
            [current (vector-ref (tetromino-rotations shape) i)]
            [next (vector-ref (tetromino-rotations shape) 
