@@ -4,10 +4,10 @@
 (import reactive)
 
 
-;=====================================================================
-; [ Grid Functions ]
+;=========================================================================
+;                        [ Grid Functions ]
+;=========================================================================
 (struct grid (width height contents))
-
 (define create-grid
   (lambda (width height)
     (grid width height (make-vector (* width height) 0))))
@@ -23,19 +23,35 @@
 (define grid-fill!
   (lambda (grid value)
     (vector-fill! (grid-contents grid) value)))
-
+(define grid-in-bounds?
+  (lambda (grid x y)
+    (and (>= x 0) (>= y 0) (< x (grid-width grid)) (< y (grid-height grid)))))
 (define get-row-helper 
   (lambda (grid y i)
     (if (>= i (grid-width grid))
         null
         (cons (grid-ref grid i y) (get-row-helper grid y (+ i 1))))))
-
 (define get-row
   (lambda (grid y)
     (get-row-helper grid y 0)))
-
+(define grid-rotate-helper
+  (lambda (grid x y new-grid)
+    (cond 
+      [(>= y (grid-height grid)) void]
+      [(>= x (grid-width grid)) (grid-rotate-helper grid 0 (+ y 1) new-grid)]
+      [else 
+        (begin 
+            (grid-set! new-grid y (- (grid-height grid) x 1) (grid-ref grid x y))
+            (grid-rotate-helper grid (+ x 1) y new-grid))])))
+(define grid-rotate
+  (lambda (grid)
+    (let* ([new-grid (create-grid (grid-width grid) (grid-height grid))])
+      (begin
+        (grid-rotate-helper grid 0 0 new-grid)
+        new-grid))))
 ;=========================================================================
-; [ Grid/Block collision detection ]
+;                  [ Grid/Block collision detection ]
+;=========================================================================
 (define block-collision-helper
   (lambda (game-grid block-grid block-x block-y x y)
     (cond [(>= y (grid-height block-grid)) #f]
@@ -50,8 +66,14 @@
 (define block-collision?
   (lambda (game-grid block-grid block-x block-y)
     (block-collision-helper game-grid block-grid block-x block-y 0 0)))
+
+
+(define mouse-rectangle-collision?
+  (lambda (mx my rx ry rw rh)
+    (and (> mx rx) (> my ry) (< mx (+ rx rw)) (< my (+ ry rh)))))
 ;=========================================================================
-; [ Function to detect and clear filled rows ]
+;             [ Function to detect and clear filled rows ]
+;=========================================================================
 (define detect-full-row
   (lambda (grid y x)
     (cond
@@ -60,29 +82,36 @@
       [else (detect-full-row grid y (+ x 1))]))) 
 
 
-(define clear-row
-  (lambda (grid y x)
+(define clear-row-helper
+  (lambda (grid i y)
     (cond
-      [(>= x (grid-width grid)) #t]                 
+      [(< i 0) void]                 
       [else
        (begin
-         (grid-set! grid x y 0)                     
-         (clear-row grid y (+ x 1)))])))  
+         (if (>= i (grid-width grid))
+             (vector-set! (grid-contents grid) i 
+                          (vector-ref (grid-contents grid) (- i (grid-width grid)))) 
+             (vector-set! (grid-contents grid) i 0))
+         (clear-row-helper grid (- i 1) y))])))  
 
+(define clear-row
+  (lambda (grid y)
+    (clear-row-helper grid (* y (grid-width grid)) y)))
 
 (define clear-full-rows
   (lambda (grid y)
     (cond
-      [(< y 0) #t] 
+      [(>= y (grid-height grid)) #t] 
       [(detect-full-row grid y 0) 
        (begin
          (score-increase 10)
-         (clear-row grid y 0) 
-         (clear-full-rows grid (- y 1)))] 
+         (clear-row grid y) 
+         (clear-full-rows grid (+ y 1)))] 
       [else
-       (clear-full-rows grid (- y 1))])))
+       (clear-full-rows grid (+ y 1))])))
 ;=========================================================================
-; [ Square Drawing Functions ]
+;                   [ Square Drawing Functions ]
+;=========================================================================
 (define colors (list
                 (rgb 0 0 0)
                  (rgb 255 0 0)
@@ -116,8 +145,9 @@
              (path size size (list (pair 0 0) (pair 0 size) (pair size 0)) "solid" highlight)
              (solid-square size shadow)))))
 
-;========================================================================
-; [ grid->drawing and helper functions ]
+;=========================================================================
+;             [ functions to display a grid on a canvas ]
+;=========================================================================
 (define grid-value->tetris-square
   (lambda (value size)
     (if (equal? value 0)
@@ -142,9 +172,9 @@
 (define canvas-grid! 
   (lambda (canvas x y grid pixel-size)
     (canvas-drawing! canvas x y (grid->drawing grid pixel-size))))
-;========================================================================
-; [ Game Items ]
-
+;=========================================================================
+;                           [ Game Items ]
+;=========================================================================
 ;Score cell and functions for manipulating it
 (define score-cell (ref 0))
 (define score (lambda () (deref score-cell)))
@@ -174,9 +204,9 @@
   (lambda (hue)
     (overlay (text "PLAY" 20 (hsv->rgb (hsv hue 100 100)))
              (solid-rectangle 150 40 (rgb 39 39 39)))))
-;========================================================================
-;; [ Update/ Draw Functions ]
-
+;=========================================================================
+;;                     [ Update/ Draw Functions ]
+;=========================================================================
 
 (define reset-game
   (lambda ()
@@ -191,7 +221,7 @@
       (grid-set! tetris-grid (random (grid-width tetris-grid)) 
                              (random (grid-height tetris-grid)) 
                              (random 8))
-      (clear-full-rows tetris-grid (grid-height tetris-grid))
+      (clear-full-rows tetris-grid 0)
       )))
 
 (define draw-game
@@ -231,14 +261,20 @@
 
 (define recieve-mouse-click
   (lambda (x y)
-    ()))
+    (cond
+      [(menu?) 
+       (if (mouse-rectangle-collision? x y 125 290 150 40) (state-set! state-running) void)]
+      [(running?) 
+       void]
+      [(game-over?)
+       (if (mouse-rectangle-collision? x y 125 200 150 40) (state-set! state-running) void)])))
 
 (define recieve-key-press
   (lambda (key)
     ()))
-;========================================================================
-;; [ Main Game Loop Control ]
-
+;=========================================================================
+;;                    [ Main Game Loop Control ]
+;=========================================================================
 ;clock cells allow current time to be accessed from anywhere
 (define clock (ref 0))
 (define state-change (ref 0))
@@ -269,9 +305,9 @@
                                           (ref-set! state-change (time))
                                           (if (running?) (reset-game) void))))
              
-;========================================================================
-
-
+;=========================================================================
+;                     [ Reactive Canvas Functions ]
+;=========================================================================
 ;this is the main update function that updates the clock and draws the correct screen depending on what state the game is in
 (define update-game-loop
   (lambda (t)
