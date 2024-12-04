@@ -56,13 +56,13 @@
 ;=========================================================================
 (define colors (list
                 (rgb 0 0 0)
-                 (rgb 254 17 60)
-                 (rgb 255 115 9)
-                 (rgb 255 222 2)
-                 (rgb 102 253 3)
-                 (rgb 1 230 254)
-                 (rgb 24 1 255)
-                 (rgb 184 3 253)))
+                 (rgb 255 0 0)
+                 (rgb 255 127 0)
+                 (rgb 255 255 0)
+                 (rgb 0 255 0)
+                 (rgb 0 255 255)
+                 (rgb 0 0 255)
+                 (rgb 255 0 255)))
 (define shadow 
   (lambda (color)
     (let* ([c (rgb->hsv color)]
@@ -86,6 +86,196 @@
     (overlay (solid-square (* size 0.75) color)
              (path size size (list (pair 0 0) (pair 0 size) (pair size 0)) "solid" highlight)
              (solid-square size shadow)))))
+
+
+(struct tetromino
+  (x y rotations))
+
+
+(define I
+  (let* ([size 20]
+         [color (rgb 1 230 254)]
+         [flat (beside (tetris-square size color) (tetris-square size color) (tetris-square size color) (tetris-square size color))]
+         [i (above (tetris-square size color) (tetris-square size color) (tetris-square size color) (tetris-square size color))])
+  (tetromino 0 0 (vector flat i flat i))))
+
+(tetromino-rotations I)
+
+(define J
+  (let* ([size 20]
+         [color (rgb 24 1 255)]
+         [flat (above/align "left" (tetris-square size color)
+                            (beside (tetris-square size color) (tetris-square size color) (tetris-square size color)))]
+         [filpped-j (beside/align "top" 
+                                      (above (tetris-square size color) (tetris-square size color) (tetris-square size color))
+                                      (tetris-square size color))]
+         [filpped-flat (above/align "right" (beside (tetris-square size color) (tetris-square size color) (tetris-square size color))
+                                        (tetris-square size color))]
+         [j (beside/align "bottom" (tetris-square size color)
+                          (above (tetris-square size color) (tetris-square size color) (tetris-square size color)))])
+  (tetromino 0 0 (vector flat filpped-j filpped-flat j))))
+
+(tetromino-rotations J)
+
+(define L
+  (let* ([size 20]
+         [color (rgb 255 115 9)]
+         [flat (above/align "right" (tetris-square size color)
+                            (beside (tetris-square size color) (tetris-square size color) (tetris-square size color)))]
+         [l (beside/align "bottom" 
+                          (above (tetris-square size color) (tetris-square size color) (tetris-square size color))
+                          (tetris-square size color))]
+         [filpped-flat (above/align "left" (beside (tetris-square size color) (tetris-square size color) (tetris-square size color))
+                                        (tetris-square size color))]
+         [filpped-l (beside/align "top" (tetris-square size color)
+                                       (above (tetris-square size color) (tetris-square size color) (tetris-square size color)))])
+  (tetromino 0 0 (vector flat l filpped-flat filpped-l))))
+
+(tetromino-rotations L)
+
+(define O
+  (let* ([size 20]
+         [color (rgb 255 222 2)]
+         [o (above (beside (tetris-square size color) (tetris-square size color))
+                   (beside (tetris-square size color) (tetris-square size color)))])
+        (tetromino 0 0 (vector o o o o))))
+
+(tetromino-rotations O)
+
+(define S
+  (let* ([size 20]
+         [color (rgb 102 253 3)]
+         [s (overlay/offset size (- size (* size 2))
+                            (beside (tetris-square size color) (tetris-square size color))
+                            (beside (tetris-square size color) (tetris-square size color)))]
+         [vertical-s (overlay/offset size size
+                                     (above (tetris-square size color) (tetris-square size color))
+                                     (above (tetris-square size color) (tetris-square size color)))])
+        (tetromino 0 0 (vector s vertical-s s vertical-s))))
+
+(tetromino-rotations S)
+
+(define Z
+  (let* ([size 20]
+         [color (rgb 254 17 60)]
+         [z (overlay/offset size size
+                            (beside (tetris-square size color) (tetris-square size color))
+                            (beside (tetris-square size color) (tetris-square size color)))]
+         [vertical-z (overlay/offset (- size (* size 2)) size
+                                     (above (tetris-square size color) (tetris-square size color))
+                                     (above (tetris-square size color) (tetris-square size color)))])
+        (tetromino 0 0 (vector z vertical-z z vertical-z))))
+
+(tetromino-rotations Z)
+
+(define T
+  (let* ([size 20]
+         [color (rgb 184 3 253)]
+         [flat (above/align "middle" (tetris-square size color)
+                            (beside (tetris-square size color) (tetris-square size color) (tetris-square size color)))]
+         [vertical-1 (beside/align "center" (above (tetris-square size color) (tetris-square size color) (tetris-square size color))
+                                   (tetris-square size color))]
+         [flipped-flat (above/align "middle" 
+                                    (beside (tetris-square size color) (tetris-square size color) (tetris-square size color))
+                                    (tetris-square size color))]
+         [vertical-2 (beside/align "center" (tetris-square size color)
+                                   (above (tetris-square size color) (tetris-square size color) (tetris-square size color)))])
+         (tetromino 0 0 (vector flat vertical-1 flipped-flat vertical-2))))
+
+(tetromino-rotations T)
+
+
+; falling animation
+(define test-canvas
+  (make-canvas 500 500))
+
+(display test-canvas)
+
+
+(define rotation
+  (ref "none"))
+
+(define shape-index
+  (ref 0))
+
+(define current-shape
+  (ref T))
+
+(define shape-position
+  (pair 0 0))
+
+(define rotate-shape
+  (lambda (key canvas x-pos y-pos)
+    (let* ([i (+ (deref shape-index) 4)]
+           [shape (deref current-shape)]
+           [current (vector-ref (tetromino-rotations shape) i)]
+           [next (vector-ref (tetromino-rotations shape) 
+                             (remainder (+ i 1) 4))]
+           [prev (vector-ref (tetromino-rotations shape) 
+                             (remainder (- i 1) 4))])
+         (begin
+            (canvas-rectangle! canvas 0 0 200 400 "solid" "black")
+            (if (equal? key "x")
+                (begin
+                  (canvas-drawing! canvas x-pos y-pos next)
+                  (ref-set! shape-index (remainder (+ i 1) 4)))
+                (begin
+                  (canvas-drawing! canvas x-pos y-pos prev)
+                  (ref-set! shape-index (remainder (- i 1) 4))))
+            (ref-set! rotation "none")))))
+
+(on-keydown!
+        (lambda (key)
+            (cond
+              [(and (or (equal? key "x") (equal? key "z")) (equal? (deref rotation) "none"))
+                  (begin 
+                    (ref-set! rotation "rotating")
+                    (rotate-shape key test-canvas (deref x-position) (deref y-position)))]
+              [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
+                (move key test-canvas)]
+              [else void])))              
+
+(define move
+  (lambda (key canvas)
+    (let
+      ([x-pos (deref x-position)]
+       [y-pos (deref y-position)]
+       [current-shape (vector-ref (tetromino-rotations (deref current-shape)) (deref shape-index))])
+      (begin
+          (canvas-rectangle! test-canvas 0 0 200 400 "solid" "black")
+          (cond 
+            [(equal? key "ArrowRight")
+              (begin
+                  (canvas-drawing! canvas x-pos y-pos current-shape)
+                  (ref-set! x-position (+ x-pos 20)))]
+            [(equal? key "ArrowLeft")
+              (begin
+                (canvas-drawing! canvas x-pos y-pos current-shape)
+                (ref-set! x-position (- x-pos 20)))]
+            [else 
+              (begin
+                (canvas-drawing! canvas x-pos y-pos current-shape)
+                (ref-set! y-position (+ y-pos 100)))])))))
+              
+              
+
+(define x-position
+  (ref 220))
+
+(define y-position
+  (ref 500))
+
+(define shape-spawn-time
+  (ref 0))
+
+(ignore
+  (animate-with
+    (lambda (time)
+           (begin
+             (ref-set! y-position (remainder (* (quotient (round (- time (deref shape-spawn-time))) 1000) 20) 500))
+             (canvas-rectangle! test-canvas 0 0 500 500 "solid" "black")
+             (canvas-drawing! test-canvas (deref x-position) (deref y-position) (vector-ref (tetromino-rotations (deref current-shape)) (deref shape-index)))
+             #t))))
 ;=========================================================================
 ;                  [ Grid/Block collision detection ]
 ;=========================================================================
@@ -146,6 +336,7 @@
          (clear-full-rows grid (+ y 1)))] 
       [else
        (clear-full-rows grid (+ y 1))])))
+
 ;=========================================================================
 ;             [ functions to display a grid on a canvas ]
 ;=========================================================================
@@ -205,158 +396,6 @@
   (lambda (hue)
     (overlay (text "PLAY" 20 (hsv->rgb (hsv hue 100 100)))
              (solid-rectangle 150 40 (rgb 39 39 39)))))
-
-;============================================================================
-;                               [ shapes ]
-;============================================================================
-(struct tetromino
-  (x y rotations))
-
-(define make-rotations!
-  (lambda (grid)
-    (vector grid 
-            (grid-rotate grid) 
-            ((o grid-rotate grid-rotate) grid)
-            ((o grid-rotate grid-rotate grid-rotate) grid))))
-
-(define shape->drawing
-  (lambda (shape index)
-    (grid->drawing (vector-ref (tetromino-rotations shape) index) 20)))
-
-(define I
-  (let* ([shape-grid (create-grid 4 4)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 0 1 5)
-                         (grid-set! shape-grid 1 1 5)
-                         (grid-set! shape-grid 2 1 5)
-                         (grid-set! shape-grid 3 1 5)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations I))
-
-(define J
-  (let* ([shape-grid (create-grid 3 3)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 0 0 6)
-                         (grid-set! shape-grid 0 1 6)
-                         (grid-set! shape-grid 1 1 6)
-                         (grid-set! shape-grid 2 1 6)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations J))
-
-(define L
-  (let* ([shape-grid (create-grid 3 3)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 3 0 2)
-                         (grid-set! shape-grid 3 1 2)
-                         (grid-set! shape-grid 2 1 2)
-                         (grid-set! shape-grid 1 1 2)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations L))
-
-(define O
-  (let* ([shape-grid (create-grid 3 3)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 1 1 3)
-                         (grid-set! shape-grid 2 1 3)
-                         (grid-set! shape-grid 1 2 3)
-                         (grid-set! shape-grid 2 2 3)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations O))
-
-(define S
-  (let* ([shape-grid (create-grid 3 3)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 1 0 4)
-                         (grid-set! shape-grid 2 0 4)
-                         (grid-set! shape-grid 0 1 4)
-                         (grid-set! shape-grid 1 1 4)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations S))
-
-(define Z
-  (let* ([shape-grid (create-grid 3 3)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 0 0 1)
-                         (grid-set! shape-grid 1 0 1)
-                         (grid-set! shape-grid 1 1 1)
-                         (grid-set! shape-grid 2 1 1)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations Z))
-
-(define T
-  (let* ([shape-grid (create-grid 3 3)]
-         [base-shape (ignore
-                       (begin
-                         (grid-set! shape-grid 1 0 7)
-                         (grid-set! shape-grid 0 1 7)
-                         (grid-set! shape-grid 1 1 7)
-                         (grid-set! shape-grid 2 1 7)))])
-        (tetromino 0 0 (make-rotations! shape-grid))))
-
-(vector-map (section grid->drawing _ 20) (tetromino-rotations T))
-
-
-;=========================================================================
-;                         [ spawing shapes ]
-;=========================================================================
-(define spawnable-shapes
-  (vector (pair I (list 0 2))
-          (pair J (list 0 2))
-          (pair L (list 1 2))
-          (pair O (list 0 1 2 3))
-          (pair S (list 0 2))
-          (pair Z (list 0 2))
-          (pair T (list 1))))
-
-(define rotation
-  (ref "none"))
-
-(define shape-index
-  (ref 0))
-
-(define current-shape
-  (ref void))
-
-(define x-position
-  (ref 200))
-
-(define y-position
-  (ref 0))
-
-(define shape-spawn-time
-  (ref 0))
-
-(define queue
-  (ref (vector-range 10)))
-
-(define queue-index
-  (ref 0))
-
-(define spawn-shape!
-  (lambda ()
-    (ignore
-      (let* ([shape (vector-ref spawnable-shapes 
-                                (random (vector-length spawnable-shapes)))]
-             [indeces (cdr shape)])
-            (begin
-              (ref-set! current-shape (car shape))
-              (ref-set! shape-index (list-ref indeces (random (length indeces))))
-              (canvas-drawing! canv (deref x-position) 
-                                    (deref y-position) 
-                                    (shape->drawing (deref current-shape) 
-                                                    (deref shape-index))))))))
 ;=========================================================================
 ;;                     [ Update/ Draw Functions ]
 ;=========================================================================
@@ -375,7 +414,7 @@
                              (random (grid-height tetris-grid)) 
                              (random 8))
       (clear-full-rows tetris-grid 0)
-      (spawn-shape!))))
+      )))
 
 (define draw-game
   (lambda ()
@@ -384,7 +423,6 @@
       (canvas-rectangle! canv 300 0 100 400 "solid" (rgb 0 0 128))
       (canvas-text! canv 5 20 (string-append "Score:\n" (number->string (score))) 20 "solid" (rgb 128 128 128))
       (canvas-grid! canv 100 0 tetris-grid 20) 
-      (canvas-drawing! canv (deref x-position) (deref y-position) current-shape)
 )))
 
 (define update-game-over-screen
@@ -425,14 +463,7 @@
 
 (define recieve-key-press
   (lambda (key)
-    (cond
-        [(and (or (equal? key "x") (equal? key "z")) (equal? (deref rotation) "none"))
-            (begin 
-              (ref-set! rotation "rotating")
-              (rotate-shape key canv))]
-        [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
-          (move key canv)]
-        [else void])))
+    ()))
 ;=========================================================================
 ;;                    [ Main Game Loop Control ]
 ;=========================================================================
@@ -520,43 +551,4 @@
 (button "Menu" (lambda () (state-set! state-menu)))
 (button "Play" (lambda () (state-set! state-running)))
 (button "Game Over" (lambda () (state-set! state-game-over)))
-
-
-(define rotate-shape
-  (lambda (key canvas)
-    (let* ([i (+ (deref shape-index) 4)])
-         (begin
-            (if (equal? key "x")
-                (begin
-                  (ref-set! shape-index (remainder (+ i 1) 4)))
-                (begin
-                  (ref-set! shape-index (remainder (- i 1) 4))))
-            (ref-set! rotation "none")))))            
-
-(define move
-  (lambda (key canvas)
-    (let
-      ([x-pos (deref x-position)]
-       [y-pos (deref y-position)])
-      (begin
-          (cond 
-            [(equal? key "ArrowRight")
-              (begin
-                  (ref-set! x-position (+ x-pos 20)))]
-            [(equal? key "ArrowLeft")
-              (begin
-                (ref-set! x-position (- x-pos 20)))]
-            [else 
-              (begin
-                (ref-set! y-position (+ y-pos 20)))])))))                          
-
-(ignore
-  (animate-with
-    (lambda (time)
-           (begin
-             (ref-set! y-position (remainder (* (quotient (round (- time (deref shape-spawn-time))) 750) 20) 400))
-             ; (canvas-drawing! canv (deref x-position) (deref y-position) (shape->drawing (deref current-shape) (deref shape-index)))
-             (spawn-shape!)
-             #t))))
-
 canv
