@@ -192,98 +192,6 @@
 
 (tetromino-rotations T)
 
-
-; falling animation
-(define test-canvas
-  (make-canvas 500 500))
-
-(display test-canvas)
-
-
-(define rotation
-  (ref "none"))
-
-(define shape-index
-  (ref 0))
-
-(define current-shape
-  (ref T))
-
-(define shape-position
-  (pair 0 0))
-
-(define rotate-shape
-  (lambda (key canvas x-pos y-pos)
-    (let* ([i (+ (deref shape-index) 4)]
-           [shape (deref current-shape)]
-           [current (vector-ref (tetromino-rotations shape) i)]
-           [next (vector-ref (tetromino-rotations shape) 
-                             (remainder (+ i 1) 4))]
-           [prev (vector-ref (tetromino-rotations shape) 
-                             (remainder (- i 1) 4))])
-         (begin
-            (canvas-rectangle! canvas 0 0 200 400 "solid" "black")
-            (if (equal? key "x")
-                (begin
-                  (canvas-drawing! canvas x-pos y-pos next)
-                  (ref-set! shape-index (remainder (+ i 1) 4)))
-                (begin
-                  (canvas-drawing! canvas x-pos y-pos prev)
-                  (ref-set! shape-index (remainder (- i 1) 4))))
-            (ref-set! rotation "none")))))
-
-(on-keydown!
-        (lambda (key)
-            (cond
-              [(and (or (equal? key "x") (equal? key "z")) (equal? (deref rotation) "none"))
-                  (begin 
-                    (ref-set! rotation "rotating")
-                    (rotate-shape key test-canvas (deref x-position) (deref y-position)))]
-              [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
-                (move key test-canvas)]
-              [else void])))              
-
-(define move
-  (lambda (key canvas)
-    (let
-      ([x-pos (deref x-position)]
-       [y-pos (deref y-position)]
-       [current-shape (vector-ref (tetromino-rotations (deref current-shape)) (deref shape-index))])
-      (begin
-          (canvas-rectangle! test-canvas 0 0 200 400 "solid" "black")
-          (cond 
-            [(equal? key "ArrowRight")
-              (begin
-                  (canvas-drawing! canvas x-pos y-pos current-shape)
-                  (ref-set! x-position (+ x-pos 20)))]
-            [(equal? key "ArrowLeft")
-              (begin
-                (canvas-drawing! canvas x-pos y-pos current-shape)
-                (ref-set! x-position (- x-pos 20)))]
-            [else 
-              (begin
-                (canvas-drawing! canvas x-pos y-pos current-shape)
-                (ref-set! y-position (+ y-pos 100)))])))))
-              
-              
-
-(define x-position
-  (ref 220))
-
-(define y-position
-  (ref 500))
-
-(define shape-spawn-time
-  (ref 0))
-
-(ignore
-  (animate-with
-    (lambda (time)
-           (begin
-             (ref-set! y-position (remainder (* (quotient (round (- time (deref shape-spawn-time))) 1000) 20) 500))
-             (canvas-rectangle! test-canvas 0 0 500 500 "solid" "black")
-             (canvas-drawing! test-canvas (deref x-position) (deref y-position) (vector-ref (tetromino-rotations (deref current-shape)) (deref shape-index)))
-             #t))))
 ;=========================================================================
 ;                  [ Grid/Block collision detection ]
 ;=========================================================================
@@ -431,6 +339,7 @@
       (canvas-rectangle! canv 300 0 100 400 "solid" (rgb 0 0 128))
       (canvas-text! canv 5 20 (string-append "Score:\n" (number->string (score))) 20 "solid" (rgb 128 128 128))
       (canvas-grid! canv 100 0 tetris-grid 20) 
+      (canvas-drawing! canv (deref x-position) (deref y-position) current-shape)
 )))
 
 (define update-game-over-screen
@@ -471,7 +380,14 @@
 
 (define recieve-key-press
   (lambda (key)
-    ()))
+    (cond
+        [(and (or (equal? key "x") (equal? key "z")) (equal? (deref rotation) "none"))
+            (begin 
+              (ref-set! rotation "rotating")
+              (rotate-shape key canv (deref x-position) (deref y-position)))]
+        [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
+          (move key canv)]
+        [else void])))
 ;=========================================================================
 ;;                    [ Main Game Loop Control ]
 ;=========================================================================
@@ -559,4 +475,66 @@
 (button "Menu" (lambda () (state-set! state-menu)))
 (button "Play" (lambda () (state-set! state-running)))
 (button "Game Over" (lambda () (state-set! state-game-over)))
+
+
+(define rotation
+  (ref "none"))
+
+(define shape-index
+  (ref 0))
+
+(define current-shape
+  (ref T))
+
+(define shape-position
+  (pair 0 0))
+
+(define rotate-shape
+  (lambda (key canvas x-pos y-pos)
+    (let* ([i (+ (deref shape-index) 4)])
+         (begin
+            (if (equal? key "x")
+                (begin
+                  (ref-set! shape-index (remainder (+ i 1) 4)))
+                (begin
+                  (ref-set! shape-index (remainder (- i 1) 4))))
+            (ref-set! rotation "none")))))            
+
+(define move
+  (lambda (key canvas)
+    (let
+      ([x-pos (deref x-position)]
+       [y-pos (deref y-position)]
+       [current-shape (vector-ref (tetromino-rotations (deref current-shape)) (deref shape-index))])
+      (begin
+          (cond 
+            [(equal? key "ArrowRight")
+              (begin
+                  (ref-set! x-position (+ x-pos 20)))]
+            [(equal? key "ArrowLeft")
+              (begin
+                (ref-set! x-position (- x-pos 20)))]
+            [else 
+              (begin
+                (ref-set! y-position (+ y-pos 20)))])))))
+              
+              
+
+(define x-position
+  (ref 220))
+
+(define y-position
+  (ref 500))
+
+(define shape-spawn-time
+  (ref 0))
+
+(ignore
+  (animate-with
+    (lambda (time)
+           (begin
+             (ref-set! y-position (remainder (* (quotient (round (- time (deref shape-spawn-time))) 1000) 20) 400))
+             (canvas-drawing! canv (deref x-position) (deref y-position) (vector-ref (tetromino-rotations (deref current-shape)) (deref shape-index)))
+             #t))))
+
 canv
