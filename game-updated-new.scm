@@ -57,7 +57,28 @@
       (begin
         (grid-rotate-helper grid 0 0 new-grid)
         new-grid))))
+;=========================================================================
+;                  [ Freezing Blocks into the Grid ]
+;=========================================================================
+(define block-freeze-helper
+  (lambda (game-grid block-grid block-x block-y x y)
+    (cond [(>= y (grid-height block-grid)) void]
+          [(>= x (grid-width block-grid))
+           (block-freeze-helper game-grid block-grid block-x block-y 0 (+ y 1))]   
+          [else
+            (begin 
+              (let* ([cell-x (+ block-x x)]
+                     [cell-y (+ block-y y)]
+                     [grid-value (grid-ref block-grid x y)])
+                    (if (and (> grid-value 0)
+                             (grid-in-bounds? game-grid cell-x cell-y))
+                        (grid-set! game-grid cell-x cell-y grid-value)
+                        void))
+                    (block-freeze-helper game-grid block-grid block-x block-y (+ x 1) y))])))
 
+(define block-freeze!
+  (lambda (game-grid block-grid block-x block-y)
+    (block-freeze-helper game-grid block-grid block-x block-y)))
 ;=========================================================================
 ;                   [ Square Drawing Functions ]
 ;=========================================================================
