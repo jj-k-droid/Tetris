@@ -118,7 +118,28 @@
 (define mouse-rectangle-collision?
   (lambda (mx my rx ry rw rh)
     (and (> mx rx) (> my ry) (< mx (+ rx rw)) (< my (+ ry rh)))))
+;=========================================================================
+;                  [ Freezing Blocks into the Grid ]
+;=========================================================================
+(define block-freeze-helper
+  (lambda (game-grid block-grid block-x block-y x y)
+    (cond [(>= y (grid-height block-grid)) void]
+          [(>= x (grid-width block-grid))
+           (block-freeze-helper game-grid block-grid block-x block-y 0 (+ y 1))]   
+          [else
+            (begin 
+              (let* ([cell-x (+ block-x x)]
+                     [cell-y (+ block-y y)]
+                     [grid-value (grid-ref block-grid x y)])
+                    (if (and (> grid-value 0)
+                             (grid-in-bounds? game-grid cell-x cell-y))
+                        (grid-set! game-grid cell-x cell-y grid-value)
+                        void))
+                    (block-freeze-helper game-grid block-grid block-x block-y (+ x 1) y))])))
 
+(define block-freeze!
+  (lambda (game-grid block-grid block-x block-y)
+    (block-freeze-helper game-grid block-grid block-x block-y 0 0)))
 ;=========================================================================
 ;             [ Function to detect and clear filled rows ]
 ;=========================================================================
@@ -144,7 +165,7 @@
 
 (define clear-row
   (lambda (grid y)
-    (clear-row-helper grid (* y (grid-width grid)) y)))
+    (clear-row-helper grid (- (* (+ y 1) (grid-width grid)) 1) y)))
 
 (define clear-full-rows
   (lambda (grid y)
@@ -474,7 +495,7 @@
          (rotate-shape key canv))]
       [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
            (move key canv)]
-[(equal? key "f") ()]
+      [(equal? key "f") (block-freeze! tetris-grid (get-shape-grid) (deref x-position) (deref y-position))]
       [else void])))
 
 ;=========================================================================
