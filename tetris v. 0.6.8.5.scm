@@ -346,7 +346,7 @@
   (ref void))
 
 (define x-position
-  (ref 160))
+  (ref 5))
 
 (define falling-y-position
   (ref 0))
@@ -400,13 +400,13 @@
 (define update-game
   (lambda ()
     (begin
-     (let* ([height (remainder (+ (remainder (* (quotient (round (- (round (time))
+     (let* ([height (remainder (+ (remainder (quotient (round (- (round (time))
                                                                     (deref state-change)))
                                                           750)
-                                                 20)
-                                              360)
+                                                 
+                                              18)
                                    (deref falling-y-position))
-                                360)]
+                                18)]
              [falling-position (ref 0)]
              [time-for-respawn (remainder (round (game-time)) 13500)])
             (begin
@@ -424,7 +424,7 @@
       (canvas-rectangle! canv 300 0 100 400 "solid" (rgb 0 0 128))
       (canvas-text! canv 5 20 (string-append "Score:\n" (number->string (score))) 20 "solid" (rgb 128 128 128))
       (canvas-grid! canv 100 0 tetris-grid 20)
-      (canvas-drawing! canv (deref x-position) (deref y-position) (deref current-shape-drawing)))))
+      (canvas-drawing! canv (+ (* (deref x-position) 20) 100) (* (deref y-position) 20) (deref current-shape-drawing)))))
 
 (define update-game-over-screen
   (lambda ()
@@ -474,6 +474,7 @@
          (rotate-shape key canv))]
       [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
            (move key canv)]
+[(equal? key "f") ()]
       [else void])))
 
 ;=========================================================================
@@ -591,11 +592,11 @@
            [y-pos (deref y-position)])
          (cond 
            [(equal? key "ArrowRight")
-            (ref-set! x-position (+ x-pos 20))]
+            (ref-set! x-position (+ x-pos 1))]
            [(equal? key "ArrowLeft")
-            (ref-set! x-position (- x-pos 20))]
+            (ref-set! x-position (- x-pos 1))]
            [(equal? key "ArrowDown")
-            (ref-set! falling-y-position (+ (deref falling-y-position) 20))]
+            (ref-set! falling-y-position (+ (deref falling-y-position) 1))]
            [else
             void]))))
 
