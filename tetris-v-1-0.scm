@@ -213,7 +213,59 @@
 (define canvas-grid! 
   (lambda (canvas x y grid pixel-size)
     (canvas-drawing! canvas x y (grid->drawing grid pixel-size))))
+;=========================================================================
+;                           [ Animations ]
+;=========================================================================
+(struct animation (image x y vx vy f lifespan c))
+(define active-animations (make-vector 20 null))
 
+(define find-empty-index
+  (lambda (i)
+    (if (>= i (vector-length active-animations))
+      -1
+      (if (null? (vector-ref active-animations i)) i 
+          (find-empty-index (+ i 1))))))
+
+(define create-animation
+  (lambda (image x y vx vy f lifespan)
+    (let* ([new (animation image x y vx vy f lifespan 0)]
+           [index (find-empty-index 0)])
+          (if (>= index 0)
+            (vector-set! active-animations index new)
+            void))))
+ 
+(define draw-animation
+  (lambda (a)
+    (if (null? a) void
+      (let* ([img (animation-image a)]
+            [percent (/ (animation-c a) (animation-lifespan a))]
+            [opc (if (= p 1) 1 (/ (- percent 1) (- p 1)))])
+            (canvas-drawing! canv (animation-x a) (animation-y a) img)))))
+
+(define update-animation
+  (lambda (a)
+    (if (>= (animation-c a) (animation-lifespan a))
+        null
+        (let* ([img (animation-image a)]
+               [x (+ (animation-x a) (animation-vx a))]
+               [y (+ (animation-y a) (animation-vy a))]
+               [vx (animation-vx a)]
+               [vy (animation-vy a)]
+               [f (animation-f a)]
+               [ls (animation-lifespan a)]
+               [c (+ 1 (amimation-c a))])
+              (animation x y vx vy f ls c)))))
+
+(define update-all-animations
+  (lambda () 
+    (vector-map! update-animation active-animations)))
+
+(define draw-all-animations
+  (lambda ()
+    (vector-for-each draw-animation active-animations)))
+
+(define spawn-test-animation
+  (lambda () (create-animation (solid-circle 50 "red") 200 200 0 10 0.5 30)))
 ;=========================================================================
 ;                           [ Game Items ]
 ;=========================================================================
@@ -435,6 +487,7 @@
       (canvas-grid! canv 100 0 tetris-grid 20)
       (canvas-drawing! canv (+ (* (deref x-position) 20) 100) (* (deref y-position) 20) (deref current-shape-drawing))
       (canvas-grid! canv 320 100 (get-shape-grid) 20))))
+      (draw-all-animations)
 
 (define update-game-over-screen
   (lambda ()
@@ -485,6 +538,8 @@
            (rotate-shape key canv))]
         [(or (equal? key "ArrowRight") (equal? key "ArrowLeft") (equal? key "ArrowDown"))
              (move key canv)]
+        [(equal? key "a") 
+          (spawn-test-animation)]
         [else void])
       void)))
 
