@@ -1,5 +1,5 @@
 # Tetris for Scamper
-Tetris Classic (without hard-drop) in [Scamper](https://scamper.cs.grinnell.edu/2.8.7/index.html) version 2.8.7 (very version specific, new versions may break this code).\
+NES Tetris in [Scamper](https://scamper.cs.grinnell.edu/2.8.7/index.html) version 2.8.7 (very version specific, new versions may break this code).\
 Made by:
 * [Leo](https://github.com/leakin24mpa)
 * [Rayane](https://github.com/rnossair)
