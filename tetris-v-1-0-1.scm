@@ -5,7 +5,163 @@
 (import canvas)
 (import html)
 (import reactive)
+(import music)
+(import music)
+(import lab)
 
+
+;;;;                                 ;;;;
+;;           SOUND EFFECTS             ;; 
+;;;;                                 ;;;;
+
+
+(ignore (load-instrument 81)) ; Square Lead 
+(ignore (load-instrument 82)) ; Saw Wave Lead
+(ignore (load-percussion 35)) ; Bass Drum for the block-ground effect
+(ignore (load-instrument 128))  ; Gunshot 
+(ignore (load-instrument 14))   ; Tubular Bells 
+(ignore (use-high-quality-instruments #t))
+
+
+(define en-note en)  
+(define qn-note qn) 
+(define wn-note wn)   
+(define hn-note hn) 
+
+
+(define block-ground-effect
+   (seq (mod percussion (note 35 en-note))   
+        (rest en-note)))       
+
+; (title "block-ground-effect")
+
+ (define block-land-effect
+   (mod (instrument 81)                     
+        (seq (note 72 en-note)               
+             (rest en-note))))             
+
+; (title "block-land-effect")
+
+ (define line-clear-effect
+   (mod (instrument 82)                      
+        (par (seq (note 76 qn-note)         
+                  (rest en-note))
+             (seq (note 79 qn-note)          
+                  (rest en-note))
+             (seq (note 84 qn-note)       
+                  (rest en-note)))))
+
+; (title "line-clear-effect")
+
+(define tetris-sound-effects
+  (seq block-ground-effect
+       block-land-effect
+       line-clear-effect))
+
+; (title " tetris-sound-effects")
+
+ ; tetris-sound-effects
+
+
+;; Play the sound effects
+; (play-composition tetris-sound-effects)
+
+(define piece-move
+  (mod (instrument 81)
+   (seq
+   (note 60 sn)   
+   (note 62 sn)))) 
+
+; (title "piece-move")
+
+(define piece-rotate
+  (mod (instrument 81)
+   (seq
+   (note 67 tn)   
+   (note 65 tn)))) 
+
+; (title "piece-rotate")
+
+
+(define game-over
+  (mod (instrument 81)
+  (seq
+   (note 60 qn)   
+   (note 57 qn)   
+   (note 55 hn)))) 
+
+; (title "game-over")
+
+
+(define level-up
+  (seq
+   (note 79 en)   
+   (note 81 en)   
+   (note 84 qn)   
+   (note 86 qn)))
+
+; (title "level-up")
+
+(define tetris-sounds
+  (seq
+   (par piece-move piece-rotate)  
+   game-over
+   level-up))
+
+(define tetris-sound-performance
+  (mod (tempo qn 140)  
+       (mod (dynamics 90)  
+            tetris-sounds)))
+
+; (title "tetris-sound-performance")
+
+; tetris-sound-performance
+
+;; Play the sound effects
+ ; (play-composition tetris-sound-performance)
+
+
+;;;;                                 ;;;;
+;;           Tetris theme              ;; 
+;;;;                                 ;;;;
+
+(ignore (load-instrument 0))  ; Acoustic Grand Piano
+
+
+(define tetris-theme
+  (seq
+   (note 76 qn)   
+   (note 71 en)   
+   (note 72 en)   
+   (note 74 qn)   
+   (note 72 en)   
+   (note 71 en)   
+   (note 69 qn)   
+   (note 69 en)   
+   (note 72 en)   
+   (note 76 qn)   
+   (note 74 en)   
+   (note 72 en)   
+   (note 71 qn)   
+   (rest qn)
+   (note 72 en)  
+   (note 74 en)  
+   (note 76 qn)   
+   (note 72 qn)   
+   (note 69 qn)   
+   (note 69 qn)))
+
+(define tetris-performance
+  (mod (tempo qn 120)  
+       (mod (dynamics 100)  
+            tetris-theme)))
+
+
+(title "TETRIS-THEME")
+
+(define tetris-real (repeat 100 tetris-performance))
+
+; (play-composition (mod (dynamics 20) tetris-real))
 ;=========================================================================
 ;                        [ Grid Functions ]
 ;=========================================================================
@@ -414,12 +570,12 @@
 
 (define spawnable-shapes
   (vector (pair I (list 0 2))
-          (pair J (list 0 2))
+          (pair J (list 0 1))
           (pair L (list 1 2))
           (pair O (list 0 1 2 3))
           (pair S (list 0 2))
           (pair Z (list 0 2))
-          (pair T (list 1))))
+          (pair T (list 0))))
 
 (define rotation
   (ref "none"))
@@ -542,16 +698,20 @@
               (cond
                 [(= row-count 1) (begin 
                   (score-increase 100)
-                  (spawn-score-animation "+100"))]
+                  (spawn-score-animation "+100")
+                  (play-composition line-clear-effect))]
                 [(= row-count 2) (begin
                   (score-increase 300)
-                  (spawn-score-animation "+300"))]
+                  (spawn-score-animation "+300")
+                  (play-composition line-clear-effect))]
                 [(= row-count 3) (begin
                   (score-increase 500)
-                  (spawn-score-animation "+500"))]
+                  (spawn-score-animation "+500")
+                  (play-composition line-clear-effect))]
                 [(= row-count 4) (begin
                   (score-increase 800)
-                  (spawn-score-animation "Tetris! +800"))]
+                  (spawn-score-animation "Tetris! +800")
+                  (play-composition line-clear-effect))]
                 [else void])))
       (update-all-animations))))
 
@@ -755,10 +915,13 @@
   (lambda ()
     (if (not (attempt-movement (get-shape-grid) 0 1))
                 (begin
+                  (play-composition block-ground-effect)
                   (if (block-freeze! tetris-grid (get-shape-grid) (deref x-position) (deref y-position))
-                      (state-set! state-game-over)
+                      (begin (play-composition game-over)
+                             (state-set! state-game-over))
                       void)
-                  (spawn-shape!))
+                  (spawn-shape!)
+                  )
                 void)))
 (define move
   (lambda (key canvas)
