@@ -6,13 +6,11 @@
 (import html)
 (import reactive)
 (import music)
-(import music)
-(import lab)
 
 
-;;;;                                 ;;;;
-;;           SOUND EFFECTS             ;; 
-;;;;                                 ;;;;
+;========================================================================
+;                             [ SOUND EFFECTS ]
+;========================================================================
 
 
 (ignore (load-instrument 81)) ; Square Lead 
@@ -155,9 +153,6 @@
   (mod (tempo qn 120)  
        (mod (dynamics 100)  
             tetris-theme)))
-
-
-(title "TETRIS-THEME")
 
 (define tetris-real (repeat 100 tetris-performance))
 
@@ -923,6 +918,7 @@
                   (spawn-shape!)
                   )
                 void)))
+
 (define move
   (lambda (key canvas)
     (let* ([x-pos (deref x-position)]
