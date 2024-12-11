@@ -12,7 +12,7 @@ NES Tetris in [Scamper](https://scamper.cs.grinnell.edu/2.8.7/index.html) versio
 [Scamper Docs](https://scamper.cs.grinnell.edu/2.8.7/docs.html) - We wouldn't have made it without you :')\
 [CSC 151 Fall '24 Readings and Labs](https://osera.cs.grinnell.edu/csc151/about.html) - Very helpful, 10/10 would reccomend\
 [Tetris Guideline Wiki](https://tetris.wiki/Tetris_Guideline) and [TetrisWiki](https://tetris.wiki/Tetris.wiki) - Anyone who wants to make Tetris should use these!!\
-[PM Osera](https://osera.cs.grinnell.edu/) - for being a great 10/10 teacher\
+[PM Osera](https://osera.cs.grinnell.edu/) - for being a great 10/10 teacher
 
 ## To play Tetris for Scamper
 Dowload the .scm file from the [latest version](https://github.com/jj-k-droid/Tetris-for-Scamper/releases) of the game.\
