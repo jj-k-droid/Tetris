@@ -1,4 +1,4 @@
-# Tetris for Scamper
+# Tetris in Scamper
 NES Tetris in [Scamper](https://scamper.cs.grinnell.edu/2.8.7/index.html) version 2.8.7 (very version specific, new versions may break this code).
 
 ## Made by
