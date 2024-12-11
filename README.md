@@ -6,5 +6,6 @@ Made by:
 * [Aarav](https://github.com/Aarav3007)
 * [Dimitra](https://github.com/bihi-creator)
 * [Steph](https://github.com/jj-k-droid)\
+\
 Acknowledgements:\
 [Scamper Docs](https://scamper.cs.grinnell.edu/2.8.7/docs.html) - We wouldn't have made it without you :')
