@@ -173,17 +173,17 @@
   (lambda (grid y)
     (clear-row-helper grid (- (* (+ y 1) (grid-width grid)) 1) y)))
 
+;returns the number of rows that were cleared
 (define clear-full-rows
-  (lambda (grid y)
+  (lambda (grid y number-cleared)
     (cond
-      [(>= y (grid-height grid)) #t] 
+      [(>= y (grid-height grid)) number-cleared] 
       [(detect-full-row grid y 0) 
        (begin
-         (score-increase 1000)
          (clear-row grid y) 
-         (clear-full-rows grid (+ y 1)))] 
+         (clear-full-rows grid (+ y 1) (+ number-cleared 1)))] 
       [else
-       (clear-full-rows grid (+ y 1))])))
+       (clear-full-rows grid (+ y 1) number-cleared)])))
 
 ;=========================================================================
 ;             [ Functions to display a grid on a canvas ]
@@ -214,59 +214,6 @@
   (lambda (canvas x y grid pixel-size)
     (canvas-drawing! canvas x y (grid->drawing grid pixel-size))))
 ;=========================================================================
-;                           [ Animations ]
-;=========================================================================
-(struct animation (image x y vx vy f lifespan c))
-(define active-animations (make-vector 20 null))
-
-(define find-empty-index
-  (lambda (i)
-    (if (>= i (vector-length active-animations))
-      -1
-      (if (null? (vector-ref active-animations i)) i 
-          (find-empty-index (+ i 1))))))
-
-(define create-animation
-  (lambda (image x y vx vy f lifespan)
-    (let* ([new (animation image x y vx vy f lifespan 0)]
-           [index (find-empty-index 0)])
-          (if (>= index 0)
-            (vector-set! active-animations index new)
-            void))))
- 
-(define draw-animation
-  (lambda (a)
-    (if (null? a) void
-      (let* ([img (animation-image a)]
-            [percent (/ (animation-c a) (animation-lifespan a))]
-            [opc (if (= p 1) 1 (/ (- percent 1) (- p 1)))])
-            (canvas-drawing! canv (animation-x a) (animation-y a) img)))))
-
-(define update-animation
-  (lambda (a)
-    (if (>= (animation-c a) (animation-lifespan a))
-        null
-        (let* ([img (animation-image a)]
-               [x (+ (animation-x a) (animation-vx a))]
-               [y (+ (animation-y a) (animation-vy a))]
-               [vx (animation-vx a)]
-               [vy (animation-vy a)]
-               [f (animation-f a)]
-               [ls (animation-lifespan a)]
-               [c (+ 1 (amimation-c a))])
-              (animation x y vx vy f ls c)))))
-
-(define update-all-animations
-  (lambda () 
-    (vector-map! update-animation active-animations)))
-
-(define draw-all-animations
-  (lambda ()
-    (vector-for-each draw-animation active-animations)))
-
-(define spawn-test-animation
-  (lambda () (create-animation (solid-circle 50 "red") 200 200 0 10 0.5 30)))
-;=========================================================================
 ;                           [ Game Items ]
 ;=========================================================================
 
@@ -278,6 +225,13 @@
 (define score-set (lambda (value) (ref-set! score-cell value)))
 
 (define score-increase (lambda (value) (score-set (+ (score) value))))
+
+
+(define line-counter (ref 0))
+(define line-count (lambda () (deref line-counter)))
+(define level (lambda () (+ (quotient (line-count) 10) 1)))
+
+
 
 ;Game Grid
 (define tetris-grid (create-grid 10 20))
@@ -299,7 +253,71 @@
   (lambda (hue)
     (overlay (text "PLAY" 20 (hsv->rgb (hsv hue 100 100)))
              (solid-rectangle 150 40 (rgb 39 39 39)))))
+;=========================================================================
+;                           [ Animations ]
+;=========================================================================
+(struct animation (image x y vx vy f lifespan c))
+(define active-animations (make-vector 20 null))
 
+(define find-empty-index
+  (lambda (i)
+    (if (>= i (vector-length active-animations))
+      -1
+      (if (null? (vector-ref active-animations i)) i 
+          (find-empty-index (+ i 1))))))
+
+(define create-animation
+  (lambda (image x y vx vy f lifespan)
+    (let* ([new (animation image x y vx vy f lifespan 0)]
+           [index (find-empty-index 0)])
+          (if (>= index 0)
+            (vector-set! active-animations index new)
+            void))))
+ 
+(define image-with-opacity
+  (lambda (img opacity)
+    (let* ([color (image-color img)]
+           [r     (rgb-red color)]
+           [g     (rgb-green color)]
+           [b     (rgb-blue color)])
+    (image-recolor img (rgb r g b opacity)))))
+
+(define draw-animation
+  (lambda (a canvas)
+    (match a
+      [null null]
+      [(animation img x y _ _ f lifespan c)
+        (let* ([percent (/ c lifespan)]
+               [opc (if (= f 1) 1 (min 1 (/ (- percent 1) (- f 1))))]
+               [draw (image-with-opacity img (* 255 opc))])
+              (begin
+                (canvas-drawing! canvas x y draw)))])))
+
+(define update-animation
+  (lambda (a)
+    (match a
+      [null null]
+      [(animation img px py vx vy f lifespan c)
+        (if (>= c lifespan)
+            null
+            (let* ([x (+ px vx)]
+                   [y (+ py vy)]
+                   [c (+ 1 c)])
+                  (animation img x y vx vy f lifespan c)))])))
+
+(define update-all-animations
+  (lambda () 
+    (vector-map! update-animation active-animations)))
+
+(define draw-all-animations
+  (lambda (canvas)
+    (vector-for-each (section draw-animation _ canvas) active-animations)))
+
+(define spawn-test-animation
+  (lambda () (create-animation (solid-circle 5 "red") 200 200 0 -3 0.5 30)))
+
+(define spawn-score-animation
+  (lambda (t) (create-animation (text t 20 "white") 200 200 0 -2 0.5 60)))
 ;============================================================================
 ;                               [ shapes ]
 ;============================================================================
@@ -466,28 +484,53 @@
     (begin
       (grid-fill! tetris-grid 0)
       (score-set 0)
+      (ref-set! line-counter 0)
       (spawn-shape!))))
 
 (define update-game
   (lambda ()
     (begin
-      (let* ([move-down? (= (remainder (frame-number) 40) 0)])
+      (let* ([move-down? (= (remainder (frame-number) (max (- 42 (* 2 (level))) 1)) 0)])
             (if move-down?
-                (move "ArrowDown" canv)
+                (move-down)
                 void))
        
-      (clear-full-rows tetris-grid 0))))
+      (let* ([row-count (clear-full-rows tetris-grid 0 0)])
+            (begin
+              (ref-set! line-counter (+ (deref line-counter) row-count))
+              (cond
+                [(= row-count 1) (begin 
+                  (score-increase 100)
+                  (spawn-score-animation "+100"))]
+                [(= row-count 2) (begin
+                  (score-increase 300)
+                  (spawn-score-animation "+300"))]
+                [(= row-count 3) (begin
+                  (score-increase 500)
+                  (spawn-score-animation "+500"))]
+                [(= row-count 4) (begin
+                  (score-increase 800)
+                  (spawn-score-animation "Tetris! +800"))]
+                [else void])))
+      (update-all-animations))))
 
 (define draw-game
   (lambda ()
     (begin 
       (canvas-rectangle! canv 0 0 100 400 "solid" (rgb 0 0 128))
       (canvas-rectangle! canv 300 0 100 400 "solid" (rgb 0 0 128))
-      (canvas-text! canv 5 20 (string-append "Score:\n" (number->string (score))) 20 "solid" (rgb 128 128 128))
+      (canvas-text! canv 5 20  (string-append "Level " (number->string (level))) 20 "solid" (rgb 128 128 128))
+      (canvas-text! canv 5 60  "Score:" 20 "solid" (rgb 128 128 128))
+      (canvas-text! canv 5 80 (number->string (score)) 20 "solid" (rgb 128 128 128))
+
+      (canvas-text! canv 5 120  "Lines:" 20 "solid" (rgb 128 128 128))
+      (canvas-text! canv 5 140 (number->string (line-count)) 20 "solid" (rgb 128 128 128))
+
       (canvas-grid! canv 100 0 tetris-grid 20)
       (canvas-drawing! canv (+ (* (deref x-position) 20) 100) (* (deref y-position) 20) (deref current-shape-drawing))
-      (canvas-grid! canv 320 100 (get-shape-grid) 20))))
-      (draw-all-animations)
+      (canvas-grid! canv 320 100 (get-shape-grid) 20)
+      (draw-all-animations canv))))
+      
 
 (define update-game-over-screen
   (lambda ()
@@ -496,7 +539,7 @@
 (define draw-game-over-screen
   (lambda ()
     (begin (draw-game)
-           (canvas-rectangle! canv 0 0 400 400 "solid" (rgb 0 0 0 (round (min 150 (/ (game-time) 3)))))
+           (canvas-rectangle! canv 100 0 200 400 "solid" (rgb 0 0 0 (round (min 150 (/ (game-time) 3)))))
            (canvas-drawing! canv 125 (round (min 150 (/ (game-time) 3))) game-over-image)
            (canvas-drawing! canv 125 (- 400 (round (min 200 (/ (game-time) 2.25)))) play-again-image))))
 
@@ -508,7 +551,8 @@
   (lambda ()
     (begin (canvas-grid! canv 20 50 title-grid 20)
            (canvas-text! canv 200 170 "made in scamper™" 20 "solid" (rgb 94 17 158))
-           (canvas-drawing! canv 125 290 (play-button-image (remainder (round (/ (game-time) 10)) 360))))))
+           (canvas-drawing! canv 125 290 (play-button-image (remainder (round (/ (game-time) 10)) 360)))
+           (draw-all-animations canv))))
 
 (define recieve-mouse-hover
   (lambda (x y)
@@ -662,6 +706,15 @@
             (ref-set! current-shape-drawing (shape->drawing (deref current-shape) (deref shape-index)))
             (ref-set! rotation "none")))))
 
+(define move-down
+  (lambda ()
+    (if (not (attempt-movement (get-shape-grid) 0 1))
+                (begin
+                  (if (block-freeze! tetris-grid (get-shape-grid) (deref x-position) (deref y-position))
+                      (state-set! state-game-over)
+                      void)
+                  (spawn-shape!))
+                void)))
 (define move
   (lambda (key canvas)
     (let* ([x-pos (deref x-position)]
@@ -672,16 +725,13 @@
            [(equal? key "ArrowLeft")
             (attempt-movement (get-shape-grid) -1 0)]
            [(equal? key "ArrowDown")
-            (if (not (attempt-movement (get-shape-grid) 0 1))
-                (begin
-                  (if (block-freeze! tetris-grid (get-shape-grid) (deref x-position) (deref y-position))
-                      (state-set! state-game-over)
-                      void)
-                  (spawn-shape!))
-                void)]
+            (begin (move-down)
+                   (score-increase 1))]
            [else
             void]))))
 
-(spawn-shape!)
+(ignore (spawn-shape!))
+
+
 
 canv
