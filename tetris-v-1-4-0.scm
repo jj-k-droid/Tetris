@@ -8,6 +8,15 @@
 ;;;  - Dimitra Giantsidi
 ;;;  - Leo Eakin
 ;;;  - Aarav Sharma
+;;;
+;;; Acknowledgements:
+;;; https://scamper.cs.grinnell.edu/2.8.7/docs.html
+;;; https://osera.cs.grinnell.edu/csc151/about.html
+;;; https://tetris.wiki/Tetris_Guideline
+;;; https://tetris.wiki/Tetris.wiki
+;;;
+;;; Note: There is an error called when the game is first run about `zones`.
+;;;       When it comes up, just hit play again and play the game :)
 
 (import image)
 (import canvas)
