@@ -16,7 +16,7 @@
 ;;; https://tetris.wiki/Tetris.wiki
 ;;;
 ;;; Note: There is an error called when the game is first run about `zones`.
-;;;       When it comes up, just hit play again and play the game :)
+;;;       When it comes up, just hit run again and play the game :)
 
 (import image)
 (import canvas)
